@@ -1,4 +1,4 @@
-name: TWRP Recovery Builder - DevCat3
+name: TWRP Recovery Builder - AKRO
 
 on:
   workflow_dispatch:
@@ -22,7 +22,7 @@ on:
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
-        default: 'https://github.com/DevCatowa/android_device_samsung_gta4lve'
+        default: 'https://github.com/akro7/android_device_samsung_gta4lve'
       DEVICE_TREE_BRANCH:
         description: 'Device Tree Branch'
         required: true
@@ -149,11 +149,11 @@ jobs:
         cd workspace
         repo sync -j$(nproc --all) --force-sync
 
-    - name: Replace bootable/recovery with DevCat3 fork
+    - name: Replace bootable/recovery with AKRO fork
       run: |
         cd workspace
         rm -rf bootable/recovery
-        git clone https://github.com/DevCat3/android_bootable_recovery \
+        git clone https://github.com/akro7/android_bootable_recovery \
           -b android-12.1 bootable/recovery --depth=1
         echo "✅ Using DevCat3/android_bootable_recovery (android-12.1)" 
 
@@ -260,7 +260,7 @@ jobs:
           - 🔖 **Commit:** [Latest commit](${{ env.DEVICE_TREE_URL }}/commit/${{ env.COMMIT_ID }}) during build
           - 🔢 **MD5:** `${{ env.MD5_IMG }}`
           - 🏗️ **Built by:** @${{ github.actor }}
-          - 🐱 **Recovery Source:** [DevCat3/android_bootable_recovery](https://github.com/DevCat3/android_bootable_recovery/tree/android-12.1)
+          - 🐼 **Recovery Source:** [AKRO/android_bootable_recovery](https://github.com/akro7/android_bootable_recovery/tree/android-12.1)
 
           ## Installation Instructions
           - For Samsung devices: Use TAR file with Odin
