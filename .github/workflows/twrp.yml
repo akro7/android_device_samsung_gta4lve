@@ -166,6 +166,14 @@ jobs:
         cd ${{ github.event.inputs.DEVICE_PATH }}
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
+    - name: Fix Permissions for relink.sh
+      run: |
+        cd workspace
+        if [ -f bootable/recovery/prebuilt/relink.sh ]; then
+          chmod +x bootable/recovery/prebuilt/relink.sh
+          echo "✅ Fixed permissions for relink.sh"
+        fi
+
     - name: Check Build Makefile
       run: |
         cd workspace
