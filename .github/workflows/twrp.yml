@@ -155,7 +155,7 @@ jobs:
         rm -rf bootable/recovery
         git clone https://github.com/akro7/android_bootable_recovery \
           -b android-12.1 bootable/recovery --depth=1
-        echo "✅ Using DevCat3/android_bootable_recovery (android-12.1)" 
+        echo "✅ Using AKRO/android_bootable_recovery (android-12.1)" 
 
     - name: Clone Device Tree
       run: |
