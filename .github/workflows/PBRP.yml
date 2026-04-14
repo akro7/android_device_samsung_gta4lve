@@ -117,7 +117,7 @@ jobs:
       run: |
         cd android-recovery
         rm -rf bootable/recovery
-        git clone https://github.com/DevCat3/android_bootable_recovery_pbrp -b ${{ inputs.MANIFEST_BRANCH }} bootable/recovery
+        git clone https://github.com/akro7/android_bootable_recovery_pbrp -b ${{ inputs.MANIFEST_BRANCH }} bootable/recovery
       
     - name: Clone Device Tree
       run: |
