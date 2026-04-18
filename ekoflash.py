@@ -9,13 +9,12 @@ from tkinter import filedialog
 BG_MAIN = "#050505"       # Amoled Black
 BG_PANEL = "#0A0A0A"      # Darker Grey
 CYAN_ACCENT = "#00D2FF"   # Cyber Blue (Electric Blue)
-MAGENTA_BTN = "#FF00FF"   # Neon Pink (For Flash)
 ORANGE_HIGHLIGHT = "#FF8C00" # Orange for selection/buttons
 LIME_GREEN = "#32FF00"    # Success Green
-YELLOW_BRIGHT = "#FFFF00" # Warning/File (White-ish Yellow)
+YELLOW_BRIGHT = "#FFFF00" # File Selection
 PURPLE_SYSTEM = "#9D00FF" # Reboot Color
-RED_DANGER = "#FF0000"    # Wipe Color
-GOLD_DEV = "#FFD700"      # Gold for Ahmed Younis Branding
+RED_DANGER = "#FF0000"    # Wipe/Error Color
+GOLD_DEV = "#FFD700"      # Gold Branding
 FG_WHITE = "#F0F0F0"
 
 class EkoFlashGUI:
@@ -26,12 +25,11 @@ class EkoFlashGUI:
         self.root.configure(bg=BG_MAIN)
         self.root.resizable(False, False)
         
-        # --- [إضافة الأيقونة الفخمة] ---
-        # تأكد أن اسم الملف icon.ico وموجود بجانب الكود
+        # استدعاء الأيقونة الفخمة
         try:
             self.root.iconbitmap("icon.ico")
-        except Exception as e:
-            print(f"Note: icon.ico not found, using default. Error: {e}")
+        except:
+            pass
 
         self.part_vars = {}
         self.setup_layout()
@@ -44,7 +42,6 @@ class EkoFlashGUI:
         header = tk.Frame(self.root, bg=BG_MAIN, height=110)
         header.pack(side="top", fill="x", padx=30, pady=20)
         
-        # Title Branding
         title_box = tk.Frame(header, bg=BG_MAIN)
         title_box.pack(side="left")
         
@@ -54,10 +51,9 @@ class EkoFlashGUI:
         # Developer Credit (Gold Branding)
         dev_frame = tk.Frame(title_box, bg=GOLD_DEV, padx=2, pady=1)
         dev_frame.pack(anchor="w", pady=5)
-        tk.Label(dev_frame, text=" DEVELOPER: AHMED YOUNIS (AKRO) ", bg=BG_MAIN, fg=GOLD_DEV, 
+        tk.Label(dev_frame, text=" DEVELOPER: AHMED YOUNIS ", bg=BG_MAIN, fg=GOLD_DEV, 
                  font=("Consolas", 10, "bold")).pack()
         
-        # Status Connection Light
         self.status_canvas = tk.Canvas(header, width=40, height=40, bg=BG_MAIN, highlightthickness=0)
         self.status_canvas.pack(side="right", padx=10)
         self.status_dot = self.status_canvas.create_oval(10, 10, 30, 30, fill=RED_DANGER)
@@ -66,11 +62,9 @@ class EkoFlashGUI:
         container = tk.Frame(self.root, bg=BG_MAIN)
         container.pack(fill="both", expand=True, padx=30)
 
-        # Left Side (Partition Controls)
         self.left_side = tk.Frame(container, bg=BG_PANEL, width=550, padx=20, pady=20)
         self.left_side.pack(side="left", fill="both", expand=True)
 
-        # Right Side (Terminal Log)
         self.right_side = tk.Frame(container, bg=BG_MAIN, width=380)
         self.right_side.pack(side="right", fill="both", padx=(25, 0))
 
@@ -79,9 +73,7 @@ class EkoFlashGUI:
         self.build_footer_ui()
 
     def build_partition_ui(self):
-        # قائمة البارتيشنات الأساسية
         parts = ["system", "boot", "recovery", "product", "vendor", "vbmeta", "userdata", "vendor_boot"]
-        
         for p in parts:
             row = tk.Frame(self.left_side, bg=BG_PANEL)
             row.pack(fill="x", pady=6)
@@ -92,35 +84,29 @@ class EkoFlashGUI:
             v = tk.StringVar()
             self.part_vars[p] = v
             ent = tk.Entry(row, textvariable=v, bg="#000", fg=FG_WHITE, borderwidth=0,
-                           insertbackground=FG_WHITE, font=("Consolas", 9), highlightthickness=1, 
-                           highlightbackground="#222")
+                           font=("Consolas", 9), highlightthickness=1, highlightbackground="#222")
             ent.pack(side="left", fill="x", expand=True, padx=10, ipady=4)
             
-            # أزرار التصفح والتفليش بألوان مخصصة
             self.btn(row, "...", lambda x=p: self.browse(x), 4, YELLOW_BRIGHT).pack(side="left", padx=2)
             self.btn(row, "FLASH", lambda x=p: self.flash(x), 8, ORANGE_HIGHLIGHT).pack(side="left", padx=2)
 
     def build_log_ui(self):
-        tk.Label(self.right_side, text="ENGINE TERMINAL", bg=BG_MAIN, fg=CYAN_ACCENT, 
+        tk.Label(self.right_side, text="LOG", bg=BG_MAIN, fg=CYAN_ACCENT, 
                  font=("Consolas", 11, "bold")).pack(anchor="w")
         
-        # اللوج بدون شريط تمرير ظاهر وبنزول تلقائي
         self.log_widget = tk.Text(self.right_side, bg="#000", fg=FG_WHITE, font=("Consolas", 9),
                                   borderwidth=0, highlightthickness=1, highlightbackground=CYAN_ACCENT)
         self.log_widget.pack(fill="both", expand=True, pady=5)
-        self.write_log(">>> AKRO-X ULTRA-CORE: INITIALIZED.")
-        self.write_log(">>> SYSTEM STATUS: STANDBY.")
+        self.write_log("[SYSTEM] Initialize engine...")
+        self.write_log("[SYSTEM] Waiting for device in fastboot mode...")
 
     def build_footer_ui(self):
         footer = tk.Frame(self.left_side, bg=BG_PANEL)
         footer.pack(side="bottom", fill="x", pady=(20, 0))
-        
-        # أزرار العمليات الخاصة
         self.btn(footer, "🗑️ WIPE DATA", self.wipe, 20, RED_DANGER).pack(side="left", expand=True, padx=5)
         self.btn(footer, "🔄 REBOOT SYSTEM", self.reboot, 20, PURPLE_SYSTEM).pack(side="left", expand=True, padx=5)
 
     def btn(self, parent, txt, cmd, w, clr):
-        # تصميم زر احترافي مع تأثير Hover
         b = tk.Button(parent, text=txt, command=cmd, width=w, bg=BG_MAIN, fg=clr,
                       activebackground=clr, activeforeground=BG_MAIN, font=("Consolas", 9, "bold"),
                       relief="flat", cursor="hand2", highlightthickness=1, highlightbackground=clr)
@@ -128,62 +114,78 @@ class EkoFlashGUI:
         b.bind("<Leave>", lambda e: b.config(bg=BG_MAIN, fg=clr))
         return b
 
-    # --- CORE FUNCTIONS ---
+    # --- CORE FUNCTIONS (تحسين مراقبة الاتصال) ---
     def monitor_fastboot(self):
+        last_serial = None
         while True:
             try:
                 cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
                 res = subprocess.run(["fastboot", "devices"], capture_output=True, text=True, creationflags=cf)
-                # تغيير لون اللمبة بناءً على الاتصال
-                self.status_canvas.itemconfig(self.status_dot, fill=LIME_GREEN if res.stdout.strip() else RED_DANGER)
-            except:
-                self.status_canvas.itemconfig(self.status_dot, fill=RED_DANGER)
-            time.sleep(1.5)
+                output = res.stdout.strip()
+                
+                if output:
+                    # استخراج رقم السيريال من مخرجات فاست بوت
+                    current_serial = output.split()[0]
+                    self.status_canvas.itemconfig(self.status_dot, fill=LIME_GREEN)
+                    
+                    if current_serial != last_serial:
+                        self.write_log(f"[STATUS] Device Connected: ID[{current_serial}]")
+                        last_serial = current_serial
+                else:
+                    self.status_canvas.itemconfig(self.status_dot, fill=RED_DANGER)
+                    if last_serial is not None:
+                        self.write_log("[STATUS] Device Disconnected.")
+                        last_serial = None
+            except Exception as e:
+                pass
+            time.sleep(1.0) # فحص كل ثانية
 
     def write_log(self, msg):
-        # إضافة نص للوج مع النزول التلقائي لآخر سطر
-        self.log_widget.insert(tk.END, msg + "\n")
+        timestamp = time.strftime("%H:%M:%S")
+        self.log_widget.insert(tk.END, f"[{timestamp}] {msg}\n")
         self.log_widget.see(tk.END)
 
     def browse(self, p):
         f = filedialog.askopenfilename(filetypes=[("Image Files", "*.img"), ("All Files", "*.*")])
         if f:
             self.part_vars[p].set(f)
-            self.write_log(f"[FILE] {p.upper()} Target Set.")
+            self.write_log(f"[FILE] Loaded {p}: {os.path.basename(f)}")
 
     def flash(self, p):
         path = self.part_vars[p].get()
         if not path:
-            self.write_log("! ERROR: No image file selected for " + p)
+            self.write_log(f"[ERROR] No file selected for {p}")
             return
         
         def task():
-            self.write_log(f"\n[EXEC] Flashing {p.upper()} Partition...")
+            self.write_log(f"[PROCESS] Flashing {p}...")
             cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             proc = subprocess.Popen(["fastboot", "flash", p, path], 
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=cf)
             for line in proc.stdout:
-                self.root.after(0, self.write_log, line.strip())
+                if line.strip(): self.root.after(0, self.write_log, f"  > {line.strip()}")
             proc.wait()
-            status = "✅ SUCCESS" if proc.returncode == 0 else "❌ FAILED"
-            self.root.after(0, self.write_log, f"[RESULT] {p.upper()} {status}")
+            if proc.returncode == 0:
+                self.write_log(f"[SUCCESS] {p} flash complete.")
+            else:
+                self.write_log(f"[FAILED] Error while flashing {p}.")
 
         threading.Thread(target=task, daemon=True).start()
 
     def wipe(self):
         def task():
-            self.write_log("\n[ACTION] Executing Factory Reset (Wipe)...")
+            self.write_log("[PROCESS] Wiping user data (Format)...")
             cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-            res = subprocess.run(["fastboot", "-w"], capture_output=True, text=True, creationflags=cf)
-            self.write_log(res.stdout if res.stdout else "✅ Device Formatted.")
+            subprocess.run(["fastboot", "-w"], creationflags=cf)
+            self.write_log("[SUCCESS] All data wiped.")
         threading.Thread(target=task, daemon=True).start()
 
     def reboot(self):
         def task():
-            self.write_log("\n[ACTION] Sending Reboot Command...")
+            self.write_log("[PROCESS] Sending reboot command...")
             cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             subprocess.run(["fastboot", "reboot"], creationflags=cf)
-            self.write_log("✅ Rebooting to System.")
+            self.write_log("[SUCCESS] Rebooting device...")
         threading.Thread(target=task, daemon=True).start()
 
 if __name__ == "__main__":
