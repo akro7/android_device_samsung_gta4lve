@@ -1,15 +1,17 @@
 import os
 import subprocess
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, scrolledtext
 
 # --- AKRO-X THEME (Windows Edition) ---
 BG_COLOR = "#050505"      # Amoled Black
 FG_WHITE = "#FFFFFF"      # Pure White
-BLUE_ACCENT = "#0055FF"   # Electric Blue for Main Accents
-ORANGE_HL = "#FF8800"     # Orange for Selections & Browse Buttons
-RED_WARN = "#D32F2F"      # Red for Wipe/Danger
+BLUE_ACCENT = "#0088FF"   # Electric Blue (Brighter)
+ORANGE_HL = "#FF6600"     # Neon Orange (Adjusted for better look)
+RED_WARN = "#FF3333"      # Danger Red
+GREEN_OK = "#00FF00"      # Success Green
 
 class EkoFlashGUI:
     def __init__(self, root):
@@ -17,23 +19,31 @@ class EkoFlashGUI:
         self.root.title("EKO FLASH PRO v2.0 - AKRO-X ENGINE")
         self.root.geometry("900x750")
         self.root.configure(bg=BG_COLOR)
-        # منع تغيير حجم النافذة للحفاظ على التصميم
         self.root.resizable(False, False)
         
         self.part_vars = {}
         self.create_widgets()
         
+        # تشغيل فحص حالة الجهاز في الخلفية
+        self.monitor_thread = threading.Thread(target=self.monitor_fastboot, daemon=True)
+        self.monitor_thread.start()
+        
     def create_widgets(self):
         # --- HEADER ---
         header_frame = tk.Frame(self.root, bg=BG_COLOR)
-        header_frame.pack(pady=15)
+        header_frame.pack(pady=15, fill="x")
         
+        # إبراز اسم المطور والمحرك
         tk.Label(header_frame, text="✨ EKO FLASH PRO v2.0 ✨", bg=BG_COLOR, fg=BLUE_ACCENT, font=("Consolas", 18, "bold")).pack()
-        tk.Label(header_frame, text="AKRO-X ULTRA-CORE", bg=BG_COLOR, fg=FG_WHITE, font=("Consolas", 12)).pack()
+        tk.Label(header_frame, text="Lead Developer: Ahmed Younis (AKRO) | AKRO-X ULTRA-CORE", bg=BG_COLOR, fg=FG_WHITE, font=("Consolas", 11)).pack()
+        
+        # مؤشر الاتصال (فوق على اليمين)
+        self.status_lbl = tk.Label(self.root, text="● CHECKING DEVICE...", bg=BG_COLOR, fg=ORANGE_HL, font=("Consolas", 11, "bold"))
+        self.status_lbl.place(x=680, y=20)
         
         # --- PARTITIONS GRID ---
         part_frame = tk.Frame(self.root, bg=BG_COLOR)
-        part_frame.pack(pady=10, padx=20, fill="x")
+        part_frame.pack(pady=15, padx=20, fill="x")
         
         partitions = ["system", "boot", "recovery", "product", "vendor", "vbmeta", "userdata", "vendor_boot"]
         
@@ -42,7 +52,7 @@ class EkoFlashGUI:
             lbl = tk.Label(part_frame, text=f"[{i+1}] {part.upper()}", bg=BG_COLOR, fg=BLUE_ACCENT, width=15, anchor="w", font=("Consolas", 11, "bold"))
             lbl.grid(row=i, column=0, pady=8, padx=5)
             
-            # مسار الملف المختار (نص برتقالي)
+            # مسار الملف المختار
             var = tk.StringVar()
             self.part_vars[part] = var
             entry = tk.Entry(part_frame, textvariable=var, width=55, bg="#111111", fg=ORANGE_HL, font=("Consolas", 10), insertbackground=FG_WHITE, relief="solid", bd=1)
@@ -54,17 +64,17 @@ class EkoFlashGUI:
             btn_browse.grid(row=i, column=2, pady=8, padx=5)
             
             # زر التفليش (أزرق)
-            btn_flash = tk.Button(part_frame, text="Flash", bg=BLUE_ACCENT, fg=FG_WHITE, font=("Consolas", 10, "bold"), width=10, relief="flat", cursor="hand2",
+            btn_flash = tk.Button(part_frame, text="Flash", bg=BLUE_ACCENT, fg=BG_COLOR, font=("Consolas", 10, "bold"), width=10, relief="flat", cursor="hand2",
                                   command=lambda p=part: self.flash_single(p))
             btn_flash.grid(row=i, column=3, pady=8, padx=5)
 
         # --- SPECIAL OPERATIONS ---
         ops_frame = tk.Frame(self.root, bg=BG_COLOR)
-        ops_frame.pack(pady=20)
+        ops_frame.pack(pady=15)
         
         tk.Button(ops_frame, text="⚡ Flash All Images", bg=ORANGE_HL, fg=BG_COLOR, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.flash_all).grid(row=0, column=0, padx=15)
         tk.Button(ops_frame, text="🗑️ Wipe Data (-w)", bg=RED_WARN, fg=FG_WHITE, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.wipe_data).grid(row=0, column=1, padx=15)
-        tk.Button(ops_frame, text="🔄 Reboot System", bg=BLUE_ACCENT, fg=FG_WHITE, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.reboot).grid(row=0, column=2, padx=15)
+        tk.Button(ops_frame, text="🔄 Reboot System", bg=BLUE_ACCENT, fg=BG_COLOR, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.reboot).grid(row=0, column=2, padx=15)
         
         # --- TERMINAL LOG CONSOLE ---
         log_frame = tk.Frame(self.root, bg=BG_COLOR)
@@ -74,12 +84,22 @@ class EkoFlashGUI:
         self.log_area = scrolledtext.ScrolledText(log_frame, bg="#0A0A0A", fg=FG_WHITE, font=("Consolas", 10), height=10, relief="solid", bd=1)
         self.log_area.pack(fill="both", expand=True, pady=5)
         self.log(">>> Engine Initialized. Waiting for commands...\n")
-        
-        # --- FOOTER ---
-        footer = tk.Label(self.root, text="👤 Lead Developer: Ahmed Younis (AKRO) | 🌐 Platform: Windows Mode", bg=BG_COLOR, fg=BLUE_ACCENT, font=("Consolas", 9))
-        footer.pack(side="bottom", pady=10)
 
     # --- FUNCTIONS ---
+    def monitor_fastboot(self):
+        """فحص مستمر لحالة الفاست بوت كل ثانيتين"""
+        while True:
+            try:
+                creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                result = subprocess.run(["fastboot", "devices"], capture_output=True, text=True, creationflags=creationflags)
+                if result.stdout.strip():
+                    self.status_lbl.config(text="● FASTBOOT CONNECTED", fg=GREEN_OK)
+                else:
+                    self.status_lbl.config(text="● DISCONNECTED", fg=RED_WARN)
+            except Exception:
+                self.status_lbl.config(text="● FASTBOOT ERROR", fg=RED_WARN)
+            time.sleep(2)
+
     def log(self, msg):
         self.log_area.insert(tk.END, msg + "\n")
         self.log_area.see(tk.END)
@@ -94,7 +114,6 @@ class EkoFlashGUI:
         def task():
             self.log(f"\n[{label}] Executing: {' '.join(cmd_list)}")
             try:
-                # إخفاء نافذة الـ CMD المزعجة في ويندوز
                 creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
                 process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=creationflags)
                 
@@ -109,7 +128,6 @@ class EkoFlashGUI:
             except Exception as e:
                 self.root.after(0, self.log, f"❌ Execution Failed: {str(e)}")
                 
-        # تشغيل الأمر في مسار منفصل عشان الواجهة ماتقفش
         threading.Thread(target=task, daemon=True).start()
 
     def flash_single(self, part):
@@ -117,7 +135,7 @@ class EkoFlashGUI:
         if not img_path or not os.path.exists(img_path):
             self.log(f"⚠️ Error: No valid file selected for {part}")
             return
-        self.run_fastboot(["fastboot", "flash", part, img_path], f"FLASH {part.upper()}")
+        self.run_fastboot(["fastboot", "flash", part, f'"{img_path}"'], f"FLASH {part.upper()}")
 
     def flash_all(self):
         self.log("\n🚀 Initializing Full Flash Sequence...")
@@ -127,7 +145,8 @@ class EkoFlashGUI:
                 if img_path and os.path.exists(img_path):
                     self.log(f"\n--- Flashing {part.upper()} ---")
                     creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-                    process = subprocess.Popen(["fastboot", "flash", part, img_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=creationflags)
+                    # استخدام علامات تنصيص حول المسار لضمان عمله إذا كان يحتوي على مسافات
+                    process = subprocess.Popen(f'fastboot flash {part} "{img_path}"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=creationflags)
                     for line in process.stdout:
                         self.root.after(0, self.log, line.strip())
                     process.wait()
