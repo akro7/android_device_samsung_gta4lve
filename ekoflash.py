@@ -5,160 +5,179 @@ import time
 import tkinter as tk
 from tkinter import filedialog, scrolledtext
 
-# --- AKRO-X THEME (Windows Edition) ---
-BG_COLOR = "#050505"      # Amoled Black
-FG_WHITE = "#FFFFFF"      # Pure White
-BLUE_ACCENT = "#0088FF"   # Electric Blue (Brighter)
-ORANGE_HL = "#FF6600"     # Neon Orange (Adjusted for better look)
-RED_WARN = "#FF3333"      # Danger Red
-GREEN_OK = "#00FF00"      # Success Green
+# --- AKRO-X ADVANCED THEME ---
+BG_MAIN = "#050505"       # Amoled Black
+BG_SECONDARY = "#0D0D0D"  # Dark Grey for sections
+CYAN_ACCENT = "#00D2FF"   # Cyber Blue
+FG_WHITE = "#F0F0F0"      # Off White
+RED_FAIL = "#FF0000"      # Status Red
+GREEN_PASS = "#00FF00"    # Status Green
 
 class EkoFlashGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("EKO FLASH PRO v2.0 - AKRO-X ENGINE")
-        self.root.geometry("900x750")
-        self.root.configure(bg=BG_COLOR)
+        self.root.title("EKO FLASH PRO")
+        self.root.geometry("1000x700")
+        self.root.configure(bg=BG_MAIN)
         self.root.resizable(False, False)
         
         self.part_vars = {}
-        self.create_widgets()
+        self.setup_layout()
         
-        # تشغيل فحص حالة الجهاز في الخلفية
-        self.monitor_thread = threading.Thread(target=self.monitor_fastboot, daemon=True)
-        self.monitor_thread.start()
-        
-    def create_widgets(self):
+        # تشغيل مراقب الحالة
+        threading.Thread(target=self.monitor_fastboot, daemon=True).start()
+
+    def setup_layout(self):
         # --- HEADER ---
-        header_frame = tk.Frame(self.root, bg=BG_COLOR)
-        header_frame.pack(pady=15, fill="x")
+        header = tk.Frame(self.root, bg=BG_MAIN, height=80)
+        header.pack(side="top", fill="x", padx=20, pady=10)
         
-        # إبراز اسم المطور والمحرك
-        tk.Label(header_frame, text="✨ EKO FLASH PRO v2.0 ✨", bg=BG_COLOR, fg=BLUE_ACCENT, font=("Consolas", 18, "bold")).pack()
-        tk.Label(header_frame, text="Lead Developer: Ahmed Younis (AKRO) | AKRO-X ULTRA-CORE", bg=BG_COLOR, fg=FG_WHITE, font=("Consolas", 11)).pack()
+        tk.Label(header, text="EKO FLASH PRO", bg=BG_MAIN, fg=CYAN_ACCENT, 
+                 font=("Consolas", 22, "bold")).pack(side="left")
         
-        # مؤشر الاتصال (فوق على اليمين)
-        self.status_lbl = tk.Label(self.root, text="● CHECKING DEVICE...", bg=BG_COLOR, fg=ORANGE_HL, font=("Consolas", 11, "bold"))
-        self.status_lbl.place(x=680, y=20)
+        # مؤشر الحالة (دائرة فقط)
+        self.status_canvas = tk.Canvas(header, width=30, height=30, bg=BG_MAIN, highlightthickness=0)
+        self.status_canvas.pack(side="right", padx=10)
+        self.status_dot = self.status_canvas.create_oval(5, 5, 25, 25, fill=RED_FAIL)
         
-        # --- PARTITIONS GRID ---
-        part_frame = tk.Frame(self.root, bg=BG_COLOR)
-        part_frame.pack(pady=15, padx=20, fill="x")
-        
+        # اسم المطور تحت العنوان
+        dev_info = tk.Label(self.root, text="Developer: Ahmed Younis", bg=BG_MAIN, fg=FG_WHITE, 
+                            font=("Consolas", 10))
+        dev_info.place(x=25, y=55)
+
+        # --- MAIN CONTAINER ---
+        main_container = tk.Frame(self.root, bg=BG_MAIN)
+        main_container.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # Left Side: Controls
+        self.left_frame = tk.Frame(main_container, bg=BG_SECONDARY, width=550, padx=15, pady=15)
+        self.left_frame.pack(side="left", fill="both", expand=True)
+
+        # Right Side: Logs
+        self.right_frame = tk.Frame(main_container, bg=BG_MAIN, width=400)
+        self.right_frame.pack(side="right", fill="both", padx=(15, 0))
+
+        self.create_controls()
+        self.create_log_area()
+
+    def create_controls(self):
         partitions = ["system", "boot", "recovery", "product", "vendor", "vbmeta", "userdata", "vendor_boot"]
         
         for i, part in enumerate(partitions):
-            # اسم البارتيشن
-            lbl = tk.Label(part_frame, text=f"[{i+1}] {part.upper()}", bg=BG_COLOR, fg=BLUE_ACCENT, width=15, anchor="w", font=("Consolas", 11, "bold"))
-            lbl.grid(row=i, column=0, pady=8, padx=5)
+            row_frame = tk.Frame(self.left_frame, bg=BG_SECONDARY)
+            row_frame.pack(fill="x", pady=5)
             
-            # مسار الملف المختار
+            tk.Label(row_frame, text=part.upper(), bg=BG_SECONDARY, fg=CYAN_ACCENT, 
+                     width=12, anchor="w", font=("Consolas", 10, "bold")).pack(side="left")
+            
             var = tk.StringVar()
             self.part_vars[part] = var
-            entry = tk.Entry(part_frame, textvariable=var, width=55, bg="#111111", fg=ORANGE_HL, font=("Consolas", 10), insertbackground=FG_WHITE, relief="solid", bd=1)
-            entry.grid(row=i, column=1, pady=8, padx=5)
+            entry = tk.Entry(row_frame, textvariable=var, bg="#000", fg=FG_WHITE, 
+                             insertbackground=FG_WHITE, relief="flat", font=("Consolas", 9))
+            entry.pack(side="left", fill="x", expand=True, padx=5, ipady=3)
             
-            # زر اختيار الملف (برتقالي)
-            btn_browse = tk.Button(part_frame, text="Browse", bg=ORANGE_HL, fg=BG_COLOR, font=("Consolas", 10, "bold"), width=10, relief="flat", cursor="hand2",
-                                   command=lambda p=part: self.browse_file(p))
-            btn_browse.grid(row=i, column=2, pady=8, padx=5)
+            # أزرار احترافية مع تأثير Hover
+            btn_b = self.create_custom_button(row_frame, "...", lambda p=part: self.browse_file(p), 4)
+            btn_b.pack(side="left", padx=2)
             
-            # زر التفليش (أزرق)
-            btn_flash = tk.Button(part_frame, text="Flash", bg=BLUE_ACCENT, fg=BG_COLOR, font=("Consolas", 10, "bold"), width=10, relief="flat", cursor="hand2",
-                                  command=lambda p=part: self.flash_single(p))
-            btn_flash.grid(row=i, column=3, pady=8, padx=5)
+            btn_f = self.create_custom_button(row_frame, "FLASH", lambda p=part: self.flash_single(p), 8)
+            btn_f.pack(side="left", padx=2)
 
-        # --- SPECIAL OPERATIONS ---
-        ops_frame = tk.Frame(self.root, bg=BG_COLOR)
-        ops_frame.pack(pady=15)
+        # Special Buttons at bottom of left frame
+        btn_box = tk.Frame(self.left_frame, bg=BG_SECONDARY)
+        btn_box.pack(side="bottom", fill="x", pady=20)
         
-        tk.Button(ops_frame, text="⚡ Flash All Images", bg=ORANGE_HL, fg=BG_COLOR, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.flash_all).grid(row=0, column=0, padx=15)
-        tk.Button(ops_frame, text="🗑️ Wipe Data (-w)", bg=RED_WARN, fg=FG_WHITE, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.wipe_data).grid(row=0, column=1, padx=15)
-        tk.Button(ops_frame, text="🔄 Reboot System", bg=BLUE_ACCENT, fg=BG_COLOR, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.reboot).grid(row=0, column=2, padx=15)
-        
-        # --- TERMINAL LOG CONSOLE ---
-        log_frame = tk.Frame(self.root, bg=BG_COLOR)
-        log_frame.pack(fill="both", expand=True, padx=25, pady=5)
-        
-        tk.Label(log_frame, text="AKRO_COMMAND_LOGS:", bg=BG_COLOR, fg=BLUE_ACCENT, font=("Consolas", 10, "bold"), anchor="w").pack(fill="x")
-        self.log_area = scrolledtext.ScrolledText(log_frame, bg="#0A0A0A", fg=FG_WHITE, font=("Consolas", 10), height=10, relief="solid", bd=1)
+        self.create_custom_button(btn_box, "⚡ FLASH ALL ROM", self.flash_all, 18, True).pack(side="left", expand=True, padx=5)
+        self.create_custom_button(btn_box, "🗑️ WIPE DATA", self.wipe_data, 15).pack(side="left", expand=True, padx=5)
+        self.create_custom_button(btn_box, "🔄 REBOOT", self.reboot, 15).pack(side="left", expand=True, padx=5)
+
+    def create_log_area(self):
+        tk.Label(self.right_frame, text="TERMINAL OUTPUT", bg=BG_MAIN, fg=CYAN_ACCENT, 
+                 font=("Consolas", 10, "bold")).pack(anchor="w")
+        self.log_area = scrolledtext.ScrolledText(self.right_frame, bg="#000", fg=FG_WHITE, 
+                                                  font=("Consolas", 9), borderwidth=0)
         self.log_area.pack(fill="both", expand=True, pady=5)
-        self.log(">>> Engine Initialized. Waiting for commands...\n")
+        self.log(">>> Engine Ready. No device detected.")
 
-    # --- FUNCTIONS ---
+    def create_custom_button(self, parent, text, command, width, primary=False):
+        btn = tk.Button(parent, text=text, command=command, width=width, 
+                        bg=CYAN_ACCENT if primary else BG_MAIN, 
+                        fg=BG_MAIN if primary else CYAN_ACCENT,
+                        activebackground=FG_WHITE, activeforeground=BG_MAIN,
+                        font=("Consolas", 9, "bold"), relief="flat", cursor="hand2")
+        
+        # Hover Effect
+        btn.bind("<Enter>", lambda e: btn.config(bg=FG_WHITE, fg=BG_MAIN))
+        btn.bind("<Leave>", lambda e: btn.config(bg=CYAN_ACCENT if primary else BG_MAIN, 
+                                                 fg=BG_MAIN if primary else CYAN_ACCENT))
+        return btn
+
+    # --- LOGIC ---
     def monitor_fastboot(self):
-        """فحص مستمر لحالة الفاست بوت كل ثانيتين"""
         while True:
             try:
                 creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
                 result = subprocess.run(["fastboot", "devices"], capture_output=True, text=True, creationflags=creationflags)
                 if result.stdout.strip():
-                    self.status_lbl.config(text="● FASTBOOT CONNECTED", fg=GREEN_OK)
+                    self.status_canvas.itemconfig(self.status_dot, fill=GREEN_PASS)
                 else:
-                    self.status_lbl.config(text="● DISCONNECTED", fg=RED_WARN)
-            except Exception:
-                self.status_lbl.config(text="● FASTBOOT ERROR", fg=RED_WARN)
-            time.sleep(2)
+                    self.status_canvas.itemconfig(self.status_dot, fill=RED_FAIL)
+            except:
+                self.status_canvas.itemconfig(self.status_dot, fill=RED_FAIL)
+            time.sleep(1.5)
 
     def log(self, msg):
         self.log_area.insert(tk.END, msg + "\n")
         self.log_area.see(tk.END)
 
     def browse_file(self, part):
-        filepath = filedialog.askopenfilename(title=f"Select {part}.img", filetypes=[("Image Files", "*.img"), ("All Files", "*.*")])
-        if filepath:
-            self.part_vars[part].set(filepath)
-            self.log(f">>> Selected {part}: {filepath}")
-
-    def run_fastboot(self, cmd_list, label):
-        def task():
-            self.log(f"\n[{label}] Executing: {' '.join(cmd_list)}")
-            try:
-                creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-                process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=creationflags)
-                
-                for line in process.stdout:
-                    self.root.after(0, self.log, line.strip())
-                process.wait()
-                
-                if process.returncode == 0:
-                    self.root.after(0, self.log, f"✅ [{label}] Success!")
-                else:
-                    self.root.after(0, self.log, f"❌ [{label}] Error (Code: {process.returncode})")
-            except Exception as e:
-                self.root.after(0, self.log, f"❌ Execution Failed: {str(e)}")
-                
-        threading.Thread(target=task, daemon=True).start()
+        path = filedialog.askopenfilename(filetypes=[("Image Files", "*.img"), ("All Files", "*.*")])
+        if path:
+            self.part_vars[part].set(path)
+            self.log(f"[FILE] {part} -> {os.path.basename(path)}")
 
     def flash_single(self, part):
-        img_path = self.part_vars[part].get()
-        if not img_path or not os.path.exists(img_path):
-            self.log(f"⚠️ Error: No valid file selected for {part}")
+        img = self.part_vars[part].get()
+        if not img:
+            self.log(f"![ERROR] No file for {part}")
             return
-        self.run_fastboot(["fastboot", "flash", part, f'"{img_path}"'], f"FLASH {part.upper()}")
+        threading.Thread(target=self._exec_flash, args=(part, img), daemon=True).start()
+
+    def _exec_flash(self, part, path):
+        self.log(f"\n[START] Flashing {part}...")
+        try:
+            cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            # إضافة علامات تنصيص لضمان عمل المسارات التي تحتوي على مسافات
+            proc = subprocess.Popen(["fastboot", "flash", part, path], 
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=cf)
+            for line in proc.stdout:
+                self.root.after(0, self.log, line.strip())
+            proc.wait()
+            self.root.after(0, self.log, "✅ Finished." if proc.returncode == 0 else "❌ Failed.")
+        except Exception as e:
+            self.root.after(0, self.log, f"❌ Error: {str(e)}")
 
     def flash_all(self):
-        self.log("\n🚀 Initializing Full Flash Sequence...")
         def sequence():
+            self.log("\n[SYSTEM] Full ROM Flash Sequence Started...")
             for part, var in self.part_vars.items():
-                img_path = var.get()
-                if img_path and os.path.exists(img_path):
-                    self.log(f"\n--- Flashing {part.upper()} ---")
-                    creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-                    # استخدام علامات تنصيص حول المسار لضمان عمله إذا كان يحتوي على مسافات
-                    process = subprocess.Popen(f'fastboot flash {part} "{img_path}"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=creationflags)
-                    for line in process.stdout:
-                        self.root.after(0, self.log, line.strip())
-                    process.wait()
-            self.root.after(0, self.log, "\n✨ Full Sequence Completed.")
-            
+                path = var.get()
+                if path:
+                    self._exec_flash(part, path)
+            self.log("[SYSTEM] All operations completed.")
         threading.Thread(target=sequence, daemon=True).start()
 
     def wipe_data(self):
-        self.run_fastboot(["fastboot", "-w"], "WIPE DATA")
+        threading.Thread(target=lambda: self._simple_cmd(["fastboot", "-w"], "WIPE"), daemon=True).start()
 
     def reboot(self):
-        self.run_fastboot(["fastboot", "reboot"], "REBOOT")
+        threading.Thread(target=lambda: self._simple_cmd(["fastboot", "reboot"], "REBOOT"), daemon=True).start()
+
+    def _simple_cmd(self, cmd, label):
+        self.log(f"\n[EXEC] {label}...")
+        cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        subprocess.run(cmd, creationflags=cf)
+        self.log(f"✅ {label} Done.")
 
 if __name__ == "__main__":
     root = tk.Tk()
