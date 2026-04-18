@@ -22,19 +22,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
 
-      - name: Verify Script Existence
-        # الخطوة دي عشان نتأكد إن الملف موجود فعلاً قبل ما نبدأ
+      - name: Verify Assets Existence
+        # تأكدنا هنا من وجود السكريبت والأيقونة معاً
         run: |
-          if (Test-Path "ekoflash.py") { echo "File found!" } else { echo "Error: ekoflash.py not found!"; exit 1 }
+          if (Test-Path "ekoflash.py") { echo "Script found!" } else { echo "Error: ekoflash.py missing!"; exit 1 }
+          if (Test-Path "icon.ico") { echo "Icon found!" } else { echo "Warning: icon.ico not found, build will continue without it." }
 
-      - name: Build EXE (No Console Mode)
-        # استخدمنا python -m PyInstaller لضمان النداء الصحيح في بيئة CI
+      - name: Build EXE with Icon
+        # أضفنا --icon="icon.ico" لدمج شعار الفينيكس داخل ملف الـ EXE
         run: |
-          python -m PyInstaller --noconsole --onefile --name "EKOFLASH_PRO_v2.0" ekoflash.py
+          python -m PyInstaller --noconsole --onefile --icon="icon.ico" --name "EKOFLASH_PRO_v2.0_AKRO" ekoflash.py
 
       - name: Upload Result
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: EKOFLASH_Windows_App
-          path: dist/EKOFLASH_PRO_v2.0.exe
+          name: EKOFLASH_PRO_Windows
+          path: dist/EKOFLASH_PRO_v2.0_AKRO.exe
