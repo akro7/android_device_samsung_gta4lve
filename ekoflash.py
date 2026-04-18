@@ -1,140 +1,147 @@
 import os
 import subprocess
-import time
-import sys
-import platform
+import threading
+import tkinter as tk
+from tkinter import filedialog, scrolledtext
 
-# --- AKRO-X PRESET (Neon Aesthetics) ---
-class Colors:
-    BLUE = '\033[1;34m'
-    CYAN = '\033[1;36m'
-    WHITE = '\033[1;37m'
-    GOLD = '\033[0;33m'
-    ORANGE = '\033[38;5;208m'
-    RED = '\033[1;31m'
-    RESET = '\033[0m'
+# --- AKRO-X THEME (Windows Edition) ---
+BG_COLOR = "#050505"      # Amoled Black
+FG_WHITE = "#FFFFFF"      # Pure White
+BLUE_ACCENT = "#0055FF"   # Electric Blue for Main Accents
+ORANGE_HL = "#FF8800"     # Orange for Selections & Browse Buttons
+RED_WARN = "#D32F2F"      # Red for Wipe/Danger
 
-# --- Multi-Platform Logic ---
-OS_NAME = platform.system()
-IS_WINDOWS = OS_NAME == "Windows"
-FASTBOOT_BIN = "fastboot" if IS_WINDOWS else "termux-fastboot"
-CLEAR_CMD = "cls" if IS_WINDOWS else "clear"
-
-LOGO = f"""
-{Colors.BLUE}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃{Colors.WHITE}             ✨ {Colors.CYAN}EKO FLASH PRO{Colors.WHITE} ✨              {Colors.BLUE}┃
-┃{Colors.GOLD}                 v2.0 STABLE                  {Colors.BLUE}┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛{Colors.RESET}"""
-
-FOOTER = f"""
-{Colors.BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- {Colors.GOLD}👤 Lead Developer :{Colors.WHITE} Ahmed Younis (AKRO) 🐼
- {Colors.GOLD}⚡ Engine         :{Colors.CYAN} AKRO-X ULTRA-CORE
- {Colors.GOLD}🌐 Platform       :{Colors.WHITE} {OS_NAME} Mode
-{Colors.BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Colors.RESET}"""
-
-# --- Core Engine ---
-class FlashEngine:
-    def __init__(self):
-        # تحديد مسار الملفات تلقائياً بناءً على النظام
-        if IS_WINDOWS:
-            self.download_path = os.getcwd() # في ويندوز يفضل وضع الملفات بجانب الأداة
-        else:
-            self.download_path = "/sdcard/Download/"
-
-        # خيارات التفليش الموسعة
-        self.partitions = {
-            "1": ("system", "system.img"),
-            "2": ("boot", "boot.img"),
-            "3": ("recovery", "recovery.img"),
-            "4": ("product", "product.img"),
-            "5": ("vendor", "vendor.img"),
-            "6": ("vbmeta", "vbmeta.img"),
-            "7": ("userdata", "userdata.img"),
-            "8": ("vendor_boot", "vendor_boot.img")
-        }
-
-    def run_cmd(self, command, label):
-        print(f"{Colors.CYAN}⚡ [EXECUTING]: {Colors.WHITE}{label}...{Colors.RESET}")
-        try:
-            subprocess.run(command, shell=True, check=True)
-            print(f"{Colors.BLUE}✅ Success!{Colors.RESET}\n")
-            return True
-        except subprocess.CalledProcessError:
-            print(f"{Colors.RED}❌ Error during: {label}{Colors.RESET}\n")
-            return False
-
-    def flash_partition(self, part_name, img_name):
-        img_path = os.path.join(self.download_path, img_name)
-        if os.path.exists(img_path):
-            cmd = f"{FASTBOOT_BIN} flash {part_name} \"{img_path}\""
-            self.run_cmd(cmd, f"Flashing {part_name.upper()}")
-        else:
-            print(f"{Colors.RED}📂 File Not Found: {img_name}{Colors.RESET}")
-
-    def clear(self):
-        os.system(CLEAR_CMD)
-        print(LOGO)
-
-    def show_menu(self):
-        self.clear()
-        print(f"{Colors.GOLD}  --- CORE PARTITIONS ---{Colors.RESET}")
+class EkoFlashGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("EKO FLASH PRO v2.0 - AKRO-X ENGINE")
+        self.root.geometry("900x750")
+        self.root.configure(bg=BG_COLOR)
+        # منع تغيير حجم النافذة للحفاظ على التصميم
+        self.root.resizable(False, False)
         
-        # تنظيم الخيارات في صفين لشكل أرقى
-        keys = list(self.partitions.keys())
-        for i in range(0, len(keys), 2):
-            k1 = keys[i]
-            v1 = self.partitions[k1][0].capitalize()
-            line = f"  {Colors.ORANGE}[{k1}]{Colors.RESET} {Colors.WHITE}{v1.ljust(15)}"
-            if i + 1 < len(keys):
-                k2 = keys[i+1]
-                v2 = self.partitions[k2][0].capitalize()
-                line += f"{Colors.ORANGE}[{k2}]{Colors.RESET} {Colors.WHITE}{v2}"
-            print(line)
+        self.part_vars = {}
+        self.create_widgets()
         
-        print(f"\n{Colors.GOLD}  --- SPECIAL OPERATIONS ---{Colors.RESET}")
-        print(f"  {Colors.ORANGE}[A]{Colors.RESET} {Colors.CYAN}Flash All Images     {Colors.ORANGE}[W]{Colors.RESET} {Colors.RED}Wipe Data (-w)")
-        print(f"  {Colors.ORANGE}[R]{Colors.RESET} {Colors.WHITE}Reboot System        {Colors.ORANGE}[Q]{Colors.RESET} {Colors.RED}Exit")
-        print(FOOTER)
-
-    def start(self):
-        while True:
-            self.show_menu()
-            choice = input(f"{Colors.GOLD}➤ AKRO_COMMAND: {Colors.WHITE}").upper()
-
-            if choice in self.partitions:
-                part, img = self.partitions[choice]
-                self.flash_partition(part, img)
-                input(f"\n{Colors.BLUE}Press Enter to continue...{Colors.RESET}")
+    def create_widgets(self):
+        # --- HEADER ---
+        header_frame = tk.Frame(self.root, bg=BG_COLOR)
+        header_frame.pack(pady=15)
+        
+        tk.Label(header_frame, text="✨ EKO FLASH PRO v2.0 ✨", bg=BG_COLOR, fg=BLUE_ACCENT, font=("Consolas", 18, "bold")).pack()
+        tk.Label(header_frame, text="AKRO-X ULTRA-CORE", bg=BG_COLOR, fg=FG_WHITE, font=("Consolas", 12)).pack()
+        
+        # --- PARTITIONS GRID ---
+        part_frame = tk.Frame(self.root, bg=BG_COLOR)
+        part_frame.pack(pady=10, padx=20, fill="x")
+        
+        partitions = ["system", "boot", "recovery", "product", "vendor", "vbmeta", "userdata", "vendor_boot"]
+        
+        for i, part in enumerate(partitions):
+            # اسم البارتيشن
+            lbl = tk.Label(part_frame, text=f"[{i+1}] {part.upper()}", bg=BG_COLOR, fg=BLUE_ACCENT, width=15, anchor="w", font=("Consolas", 11, "bold"))
+            lbl.grid(row=i, column=0, pady=8, padx=5)
             
-            elif choice == 'A':
-                print(f"{Colors.ORANGE}🚀 Initializing Full Flash Sequence...{Colors.RESET}")
-                for key in self.partitions:
-                    part, img = self.partitions[key]
-                    self.flash_partition(part, img)
-                print(f"{Colors.BLUE}✨ Sequence Completed.{Colors.RESET}")
-                time.sleep(2)
-
-            elif choice == 'W':
-                self.run_cmd(f"{FASTBOOT_BIN} -w", "Wiping Userdata")
-                time.sleep(2)
-
-            elif choice == 'R':
-                self.run_cmd(f"{FASTBOOT_BIN} reboot", "Rebooting Device")
-                sys.exit()
+            # مسار الملف المختار (نص برتقالي)
+            var = tk.StringVar()
+            self.part_vars[part] = var
+            entry = tk.Entry(part_frame, textvariable=var, width=55, bg="#111111", fg=ORANGE_HL, font=("Consolas", 10), insertbackground=FG_WHITE, relief="solid", bd=1)
+            entry.grid(row=i, column=1, pady=8, padx=5)
             
-            elif choice == 'Q':
-                print(f"{Colors.RED}👋 AKRO-X Terminated.{Colors.RESET}")
-                sys.exit()
+            # زر اختيار الملف (برتقالي)
+            btn_browse = tk.Button(part_frame, text="Browse", bg=ORANGE_HL, fg=BG_COLOR, font=("Consolas", 10, "bold"), width=10, relief="flat", cursor="hand2",
+                                   command=lambda p=part: self.browse_file(p))
+            btn_browse.grid(row=i, column=2, pady=8, padx=5)
             
-            else:
-                print(f"{Colors.RED}❌ Unknown Command!{Colors.RESET}")
-                time.sleep(1)
+            # زر التفليش (أزرق)
+            btn_flash = tk.Button(part_frame, text="Flash", bg=BLUE_ACCENT, fg=FG_WHITE, font=("Consolas", 10, "bold"), width=10, relief="flat", cursor="hand2",
+                                  command=lambda p=part: self.flash_single(p))
+            btn_flash.grid(row=i, column=3, pady=8, padx=5)
+
+        # --- SPECIAL OPERATIONS ---
+        ops_frame = tk.Frame(self.root, bg=BG_COLOR)
+        ops_frame.pack(pady=20)
+        
+        tk.Button(ops_frame, text="⚡ Flash All Images", bg=ORANGE_HL, fg=BG_COLOR, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.flash_all).grid(row=0, column=0, padx=15)
+        tk.Button(ops_frame, text="🗑️ Wipe Data (-w)", bg=RED_WARN, fg=FG_WHITE, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.wipe_data).grid(row=0, column=1, padx=15)
+        tk.Button(ops_frame, text="🔄 Reboot System", bg=BLUE_ACCENT, fg=FG_WHITE, font=("Consolas", 11, "bold"), width=20, relief="flat", cursor="hand2", command=self.reboot).grid(row=0, column=2, padx=15)
+        
+        # --- TERMINAL LOG CONSOLE ---
+        log_frame = tk.Frame(self.root, bg=BG_COLOR)
+        log_frame.pack(fill="both", expand=True, padx=25, pady=5)
+        
+        tk.Label(log_frame, text="AKRO_COMMAND_LOGS:", bg=BG_COLOR, fg=BLUE_ACCENT, font=("Consolas", 10, "bold"), anchor="w").pack(fill="x")
+        self.log_area = scrolledtext.ScrolledText(log_frame, bg="#0A0A0A", fg=FG_WHITE, font=("Consolas", 10), height=10, relief="solid", bd=1)
+        self.log_area.pack(fill="both", expand=True, pady=5)
+        self.log(">>> Engine Initialized. Waiting for commands...\n")
+        
+        # --- FOOTER ---
+        footer = tk.Label(self.root, text="👤 Lead Developer: Ahmed Younis (AKRO) | 🌐 Platform: Windows Mode", bg=BG_COLOR, fg=BLUE_ACCENT, font=("Consolas", 9))
+        footer.pack(side="bottom", pady=10)
+
+    # --- FUNCTIONS ---
+    def log(self, msg):
+        self.log_area.insert(tk.END, msg + "\n")
+        self.log_area.see(tk.END)
+
+    def browse_file(self, part):
+        filepath = filedialog.askopenfilename(title=f"Select {part}.img", filetypes=[("Image Files", "*.img"), ("All Files", "*.*")])
+        if filepath:
+            self.part_vars[part].set(filepath)
+            self.log(f">>> Selected {part}: {filepath}")
+
+    def run_fastboot(self, cmd_list, label):
+        def task():
+            self.log(f"\n[{label}] Executing: {' '.join(cmd_list)}")
+            try:
+                # إخفاء نافذة الـ CMD المزعجة في ويندوز
+                creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=creationflags)
+                
+                for line in process.stdout:
+                    self.root.after(0, self.log, line.strip())
+                process.wait()
+                
+                if process.returncode == 0:
+                    self.root.after(0, self.log, f"✅ [{label}] Success!")
+                else:
+                    self.root.after(0, self.log, f"❌ [{label}] Error (Code: {process.returncode})")
+            except Exception as e:
+                self.root.after(0, self.log, f"❌ Execution Failed: {str(e)}")
+                
+        # تشغيل الأمر في مسار منفصل عشان الواجهة ماتقفش
+        threading.Thread(target=task, daemon=True).start()
+
+    def flash_single(self, part):
+        img_path = self.part_vars[part].get()
+        if not img_path or not os.path.exists(img_path):
+            self.log(f"⚠️ Error: No valid file selected for {part}")
+            return
+        self.run_fastboot(["fastboot", "flash", part, img_path], f"FLASH {part.upper()}")
+
+    def flash_all(self):
+        self.log("\n🚀 Initializing Full Flash Sequence...")
+        def sequence():
+            for part, var in self.part_vars.items():
+                img_path = var.get()
+                if img_path and os.path.exists(img_path):
+                    self.log(f"\n--- Flashing {part.upper()} ---")
+                    creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                    process = subprocess.Popen(["fastboot", "flash", part, img_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=creationflags)
+                    for line in process.stdout:
+                        self.root.after(0, self.log, line.strip())
+                    process.wait()
+            self.root.after(0, self.log, "\n✨ Full Sequence Completed.")
+            
+        threading.Thread(target=sequence, daemon=True).start()
+
+    def wipe_data(self):
+        self.run_fastboot(["fastboot", "-w"], "WIPE DATA")
+
+    def reboot(self):
+        self.run_fastboot(["fastboot", "reboot"], "REBOOT")
 
 if __name__ == "__main__":
-    # تهيئة المسارات في تيرمكس
-    if not IS_WINDOWS and not os.path.exists("/sdcard/Download"):
-        os.system("termux-setup-storage")
-    
-    engine = FlashEngine()
-    engine.start()
+    root = tk.Tk()
+    app = EkoFlashGUI(root)
+    root.mainloop()
