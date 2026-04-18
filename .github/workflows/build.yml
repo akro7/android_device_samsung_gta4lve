@@ -1,20 +1,30 @@
 name: Build EKOFLASH EXE
-on: [push]
+
+on:
+  push:
+    branches: [ "android-12.1", "main" ] # هيشتغل على الفرعين عشان يريحك
+  workflow_dispatch: # تقدر تشغله يدوي من المتصفح
+
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-latest # لازم ويندوز عشان يطلع ملف .exe
     steps:
-      - uses: actions/checkout@v3
+      - name: Check Out Repository
+        uses: actions/checkout@v4 # التحديث الجديد
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # التحديث الجديد
         with:
           python-version: '3.10'
+
       - name: Install PyInstaller
         run: pip install pyinstaller
+
       - name: Build EXE
-        run: pyinstaller --onefile --name "EKOFLASH" ekoflash.py
+        run: pyinstaller --onefile --name "EKOFLASH_PRO" ekoflash.py
+
       - name: Upload Result
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # ده اللي كان عامل المشكلة وصلحناه لـ v4
         with:
           name: EKOFLASH_Windows_App
-          path: dist/EKOFLASH.exe
+          path: dist/EKOFLASH_PRO.exe
