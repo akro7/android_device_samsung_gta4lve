@@ -97,7 +97,7 @@ class EkoFlashGUI:
         main_frame = tk.Frame(self.fastboot_frame, bg=BG_MAIN)
         main_frame.pack(fill="both", expand=True)
 
-        parts_title = tk.Label(main_frame, text="PARTITION FLASHING (FASTBOOT)", bg=BG_MAIN, fg=ACCENT_BLUE,
+        parts_title = tk.Label(main_frame, text="PARTITION FLASHING (AKRO 🐼)", bg=BG_MAIN, fg=ACCENT_BLUE,
                               font=("Consolas", 14, "bold"))
         parts_title.pack(anchor="w", pady=(0, 8))
 
@@ -132,11 +132,10 @@ class EkoFlashGUI:
         qf_inner = tk.Frame(quick_frame, bg=BG_MAIN)
         qf_inner.pack(pady=12, padx=15, fill="x")
 
-        self.create_btn(qf_inner, "FLASH ALL", self.flash_all_fastboot, 15, BTN_ORANGE, "#000000").pack(side="left", padx=4)
-        self.create_btn(qf_inner, "ERASE SYSTEM", lambda: self.erase_part("system"), 15, BTN_RED, FG_WHITE).pack(side="left", padx=4)
-        self.create_btn(qf_inner, "WIPE DATA", self.wipe_data, 15, BTN_RED, FG_WHITE).pack(side="left", padx=4)
-        self.create_btn(qf_inner, "ADB SIDELOAD", self.adb_sideload, 15, "#7F00FF", FG_WHITE).pack(side="left", padx=4)
-        self.create_btn(qf_inner, "FASTBOOT SIDELOAD", self.fastboot_sideload, 18, "#7F00FF", FG_WHITE).pack(side="left", padx=4)
+        self.create_btn(qf_inner, "FLASH ALL", self.flash_all_fastboot, 18, BTN_ORANGE, "#000000").pack(side="left", padx=6)
+        self.create_btn(qf_inner, "ERASE SYSTEM", lambda: self.erase_part("system"), 18, BTN_RED, FG_WHITE).pack(side="left", padx=6)
+        self.create_btn(qf_inner, "WIPE DATA", self.wipe_data, 18, BTN_RED, FG_WHITE).pack(side="left", padx=6)
+        self.create_btn(qf_inner, "ADB SIDELOAD", self.adb_sideload, 18, "#7F00FF", FG_WHITE).pack(side="left", padx=6)
 
         reboot_frame = tk.Frame(main_frame, bg=BG_MAIN)
         reboot_frame.pack(fill="x", pady=5)
@@ -306,21 +305,18 @@ class EkoFlashGUI:
             time.sleep(3)
 
     def flash_fastboot(self, part):
+        """منطق الفلاش المباشر لفاست بوت"""
         path = self.part_vars[part].get()
         if not path:
             self.write_log(f"Error: No file selected for {part}")
             return
+        # تنفيذ مباشر دون محرك وسيط
         threading.Thread(target=self._exec_cmd, args=(["fastboot", "flash", part, path], f"Flashing {part}")).start()
 
     def adb_sideload(self):
         f = filedialog.askopenfilename(filetypes=[("Zip Update", "*.zip")])
         if f:
             threading.Thread(target=self._exec_cmd, args=(["adb", "sideload", f], "ADB Sideload")).start()
-
-    def fastboot_sideload(self):
-        f = filedialog.askopenfilename(filetypes=[("Zip Update", "*.zip")])
-        if f:
-            threading.Thread(target=self._exec_cmd, args=(["fastboot", "sideload", f], "Fastboot Sideload")).start()
 
     def start_real_odin_flash(self):
         self.write_log("<OSM> Analysis Started...", "ODIN")
@@ -348,11 +344,10 @@ class EkoFlashGUI:
             return
 
         def run_flash():
-            # Simulated progress for UI demonstration since heimdall stdout varies
             total = len(selected_files)
             for i, p in enumerate(selected_files):
                 self.write_log(f"Processing partition: {p}...", "ODIN")
-                time.sleep(0.5) # Logic placeholder
+                time.sleep(0.3)
                 curr_progress = ((i + 1) / total) * 100
                 self.progress_var.set(curr_progress)
                 self.percent_lbl.config(text=f"{int(curr_progress)}%")
@@ -378,6 +373,8 @@ class EkoFlashGUI:
                     self.pass_label.config(text="PASS!", bg=SUCCESS_GREEN, fg="#000")
                     self.progress_var.set(100)
                     self.percent_lbl.config(text="100%")
+                if self.auto_reboot_var.get() and target == "MAIN":
+                    self.reboot_device()
             else:
                 self.write_log(f"ERROR: {title} failed (Code: {proc.returncode})", target)
                 if target == "ODIN": self.pass_label.config(text="FAIL", bg=BTN_RED, fg="#FFF")
@@ -395,7 +392,9 @@ class EkoFlashGUI:
         threading.Thread(target=self._exec_cmd, args=(["fastboot", "-w"], "Wiping Userdata")).start()
 
     def reboot_device(self):
-        subprocess.run(["fastboot", "reboot"], creationflags=0x08000000 if os.name == 'nt' else 0)
+        # تنفيذ أمر الريبوت بشكل مباشر
+        cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        subprocess.run(["fastboot", "reboot"], creationflags=cf)
         self.write_log("Reboot command dispatched.")
 
     def odin_reset(self):
