@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import threading
 import time
@@ -28,6 +29,11 @@ class EkoFlashGUI:
         self.root.configure(bg=BG_MAIN)
         self.root.resizable(False, False)
         
+        # Paths for Bundled Engines
+        self.fastboot_exe = self.get_resource_path("fastboot.exe")
+        self.adb_exe = self.get_resource_path("adb.exe")
+        self.heimdall_exe = self.get_resource_path("heimdall.exe")
+        
         # Variables
         self.part_vars = {}
         self.auto_reboot_var = tk.BooleanVar(value=True)
@@ -52,6 +58,12 @@ class EkoFlashGUI:
         self.setup_layout()
         # Start device monitoring thread
         threading.Thread(target=self.monitor_device, daemon=True).start()
+
+    def get_resource_path(self, relative_path):
+        """ الحصول على المسار الصحيح للملفات سواء في وضع التطوير أو بعد التحويل لـ EXE """
+        if hasattr(sys, '_MEIPASS'):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
 
     def setup_layout(self):
         # ==================== HEADER ====================
@@ -292,8 +304,8 @@ class EkoFlashGUI:
         while True:
             cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             try:
-                res_f = subprocess.run(["fastboot", "devices"], capture_output=True, text=True, creationflags=cf)
-                res_s = subprocess.run(["heimdall", "detect"], capture_output=True, text=True, creationflags=cf)
+                res_f = subprocess.run([self.fastboot_exe, "devices"], capture_output=True, text=True, creationflags=cf)
+                res_s = subprocess.run([self.heimdall_exe, "detect"], capture_output=True, text=True, creationflags=cf)
                 
                 if res_f.stdout.strip():
                     self.odin_com_label.config(text="FASTBOOT CONNECTED", bg=BTN_BLUE, fg="#000")
@@ -305,18 +317,16 @@ class EkoFlashGUI:
             time.sleep(3)
 
     def flash_fastboot(self, part):
-        """منطق الفلاش المباشر لفاست بوت"""
         path = self.part_vars[part].get()
         if not path:
             self.write_log(f"Error: No file selected for {part}")
             return
-        # تنفيذ مباشر دون محرك وسيط
-        threading.Thread(target=self._exec_cmd, args=(["fastboot", "flash", part, path], f"Flashing {part}")).start()
+        threading.Thread(target=self._exec_cmd, args=([self.fastboot_exe, "flash", part, path], f"Flashing {part}")).start()
 
     def adb_sideload(self):
         f = filedialog.askopenfilename(filetypes=[("Zip Update", "*.zip")])
         if f:
-            threading.Thread(target=self._exec_cmd, args=(["adb", "sideload", f], "ADB Sideload")).start()
+            threading.Thread(target=self._exec_cmd, args=([self.adb_exe, "sideload", f], "ADB Sideload")).start()
 
     def start_real_odin_flash(self):
         self.write_log("<OSM> Analysis Started...", "ODIN")
@@ -324,7 +334,7 @@ class EkoFlashGUI:
         self.progress_var.set(0)
         self.percent_lbl.config(text="0%")
         
-        cmd = ["heimdall", "flash"]
+        cmd = [self.heimdall_exe, "flash"]
         if self.pit_var.get(): cmd += ["--pit", self.pit_var.get()]
         
         map_names = {"BL": "BOOTLOADER", "AP": "SYSTEM", "CP": "RADIO", "CSC": "HIDDEN"}
@@ -386,15 +396,14 @@ class EkoFlashGUI:
             if v.get(): self.flash_fastboot(p)
 
     def erase_part(self, p):
-        threading.Thread(target=self._exec_cmd, args=(["fastboot", "erase", p], f"Erasing {p}")).start()
+        threading.Thread(target=self._exec_cmd, args=([self.fastboot_exe, "erase", p], f"Erasing {p}")).start()
 
     def wipe_data(self):
-        threading.Thread(target=self._exec_cmd, args=(["fastboot", "-w"], "Wiping Userdata")).start()
+        threading.Thread(target=self._exec_cmd, args=([self.fastboot_exe, "-w"], "Wiping Userdata")).start()
 
     def reboot_device(self):
-        # تنفيذ أمر الريبوت بشكل مباشر
         cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-        subprocess.run(["fastboot", "reboot"], creationflags=cf)
+        subprocess.run([self.fastboot_exe, "reboot"], creationflags=cf)
         self.write_log("Reboot command dispatched.")
 
     def odin_reset(self):
