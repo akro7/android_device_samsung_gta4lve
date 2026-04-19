@@ -109,7 +109,7 @@ class EkoFlashGUI:
         main_frame = tk.Frame(self.fastboot_frame, bg=BG_MAIN)
         main_frame.pack(fill="both", expand=True)
 
-        parts_title = tk.Label(main_frame, text="PARTITION FLASHING (AKRO 🐼)", bg=BG_MAIN, fg=ACCENT_BLUE,
+        parts_title = tk.Label(main_frame, text="PARTITION FLASHING (AKRO VIP)", bg=BG_MAIN, fg=ACCENT_BLUE,
                               font=("Consolas", 14, "bold"))
         parts_title.pack(anchor="w", pady=(0, 8))
 
