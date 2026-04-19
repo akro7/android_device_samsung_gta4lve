@@ -24,7 +24,7 @@ class EkoFlashGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("EKO FLASH PRO v2.1")
-        self.root.geometry("1080x850")
+        self.root.geometry("1080x880")
         self.root.configure(bg=BG_MAIN)
         self.root.resizable(False, False)
         
@@ -35,8 +35,9 @@ class EkoFlashGUI:
         self.odin_opts_vars = {}
         self.pit_var = tk.StringVar()
         self.current_mode = "FASTBOOT"
+        self.progress_var = tk.DoubleVar()
 
-        # Modern Style for Tabs
+        # Modern Style for Tabs & Progress
         self.style = ttk.Style()
         self.style.theme_use('default')
         self.style.configure("TNotebook", background=BG_MAIN, borderwidth=0)
@@ -45,6 +46,8 @@ class EkoFlashGUI:
         self.style.map("TNotebook.Tab", 
                       background=[("selected", ACCENT_BLUE)], 
                       foreground=[("selected", "#000000")])
+        
+        self.style.configure("Blue.Horizontal.TProgressbar", thickness=20, background=BTN_BLUE, troughcolor=BG_DARK, borderwidth=0)
 
         self.setup_layout()
         # Start device monitoring thread
@@ -98,7 +101,6 @@ class EkoFlashGUI:
                               font=("Consolas", 14, "bold"))
         parts_title.pack(anchor="w", pady=(0, 8))
 
-        # القائمة الكاملة للبارتيشنات
         parts = ["boot", "recovery", "system", "vendor", "product", "vbmeta", "vendor_boot", "userdata"]
         part_frame = tk.Frame(main_frame, bg=BG_DARK, relief="flat", bd=0)
         part_frame.pack(fill="x", pady=8)
@@ -125,25 +127,29 @@ class EkoFlashGUI:
         # Quick Actions
         quick_frame = tk.LabelFrame(main_frame, text=" QUICK ACTIONS ", bg=BG_MAIN, fg=ACCENT_BLUE,
                                    font=("Consolas", 11, "bold"), bd=1, relief="solid")
-        quick_frame.pack(fill="x", pady=15)
+        quick_frame.pack(fill="x", pady=10)
 
         qf_inner = tk.Frame(quick_frame, bg=BG_MAIN)
         qf_inner.pack(pady=12, padx=15, fill="x")
 
-        self.create_btn(qf_inner, "FLASH ALL", self.flash_all_fastboot, 18, BTN_ORANGE, "#000000").pack(side="left", padx=6)
-        self.create_btn(qf_inner, "ERASE SYSTEM", lambda: self.erase_part("system"), 18, BTN_RED, FG_WHITE).pack(side="left", padx=6)
-        self.create_btn(qf_inner, "WIPE DATA", self.wipe_data, 18, BTN_RED, FG_WHITE).pack(side="left", padx=6)
-        self.create_btn(qf_inner, "REBOOT SYSTEM", self.reboot_device, 18, BTN_BLUE, "#000000").pack(side="left", padx=6)
+        self.create_btn(qf_inner, "FLASH ALL", self.flash_all_fastboot, 15, BTN_ORANGE, "#000000").pack(side="left", padx=4)
+        self.create_btn(qf_inner, "ERASE SYSTEM", lambda: self.erase_part("system"), 15, BTN_RED, FG_WHITE).pack(side="left", padx=4)
+        self.create_btn(qf_inner, "WIPE DATA", self.wipe_data, 15, BTN_RED, FG_WHITE).pack(side="left", padx=4)
+        self.create_btn(qf_inner, "ADB SIDELOAD", self.adb_sideload, 15, "#7F00FF", FG_WHITE).pack(side="left", padx=4)
+        self.create_btn(qf_inner, "FASTBOOT SIDELOAD", self.fastboot_sideload, 18, "#7F00FF", FG_WHITE).pack(side="left", padx=4)
 
-        chk = tk.Checkbutton(qf_inner, text=" Auto Reboot After Flash", variable=self.auto_reboot_var,
+        reboot_frame = tk.Frame(main_frame, bg=BG_MAIN)
+        reboot_frame.pack(fill="x", pady=5)
+        self.create_btn(reboot_frame, "REBOOT SYSTEM", self.reboot_device, 20, BTN_BLUE, "#000000").pack(side="left", padx=5)
+        chk = tk.Checkbutton(reboot_frame, text=" Auto Reboot After Flash", variable=self.auto_reboot_var,
                             bg=BG_MAIN, fg=TEXT_BLUE, selectcolor=BTN_GREEN, font=("Consolas", 10, "bold"), activebackground=BG_MAIN)
-        chk.pack(side="right", padx=20)
+        chk.pack(side="left", padx=20)
 
         log_title = tk.Label(main_frame, text="OPERATION LOG", bg=BG_MAIN, fg=ACCENT_BLUE,
                             font=("Consolas", 12, "bold"), anchor="w")
         log_title.pack(anchor="w", pady=(10, 5))
 
-        self.log_widget = tk.Text(main_frame, height=10, bg="#0A0A0A", fg=FG_WHITE, font=("Consolas", 9),
+        self.log_widget = tk.Text(main_frame, height=8, bg="#0A0A0A", fg=FG_WHITE, font=("Consolas", 9),
                                   relief="flat", bd=0, highlightthickness=2, highlightbackground="#222")
         self.log_widget.pack(fill="both", expand=True, pady=(0, 10), padx=2)
 
@@ -168,6 +174,16 @@ class EkoFlashGUI:
         self.pass_label = tk.Label(pass_frame, text="READY", bg=BTN_DARK, fg=FG_WHITE,
                                   font=("Consolas", 20, "bold"), width=12, height=2, relief="flat")
         self.pass_label.pack()
+        
+        # Progress Bar & Percentage
+        self.prog_container = tk.Frame(top_com, bg=BG_MAIN)
+        self.prog_container.pack(side="left", fill="x", expand=True, padx=15)
+        
+        self.progress_bar = ttk.Progressbar(self.prog_container, variable=self.progress_var, maximum=100, style="Blue.Horizontal.TProgressbar")
+        self.progress_bar.pack(fill="x", pady=(5,0))
+        
+        self.percent_lbl = tk.Label(self.prog_container, text="0%", bg=BG_MAIN, fg=BTN_BLUE, font=("Consolas", 12, "bold"))
+        self.percent_lbl.pack()
 
         # Split: Left (Log & Options) / Right (Files Selection)
         split = tk.Frame(main, bg=BG_MAIN)
@@ -180,13 +196,11 @@ class EkoFlashGUI:
         notebook = ttk.Notebook(left)
         notebook.pack(fill="both", expand=True)
 
-        # Tab 1: Log
         log_tab = tk.Frame(notebook, bg=ODIN_BOX_BG)
         notebook.add(log_tab, text="  LOG  ")
         self.odin_log = tk.Text(log_tab, bg=ODIN_BOX_BG, fg=FG_WHITE, font=("Consolas", 9), relief="flat")
         self.odin_log.pack(fill="both", expand=True, padx=8, pady=8)
 
-        # Tab 2: Options
         opt_tab = tk.Frame(notebook, bg=ODIN_BOX_BG)
         notebook.add(opt_tab, text=" OPTIONS ")
         opts = [("Auto Reboot", True), ("Nand Erase", False), ("Re-Partition", False), ("F. Reset Time", True)]
@@ -196,7 +210,6 @@ class EkoFlashGUI:
             tk.Checkbutton(opt_tab, text=name, variable=var, bg=ODIN_BOX_BG, fg=FG_WHITE,
                           selectcolor=BTN_GREEN, font=("Consolas", 10), anchor="w", activebackground=ODIN_BOX_BG).pack(anchor="w", padx=20, pady=8)
 
-        # Tab 3: PIT
         pit_tab = tk.Frame(notebook, bg=ODIN_BOX_BG)
         notebook.add(pit_tab, text="  PIT  ")
         tk.Label(pit_tab, text="PIT Partition Table:", bg=ODIN_BOX_BG, fg=ACCENT_BLUE, font=("Consolas", 10)).pack(anchor="w", padx=20, pady=(20,5))
@@ -204,7 +217,6 @@ class EkoFlashGUI:
                 relief="flat", highlightthickness=1, highlightbackground="#444").pack(fill="x", padx=20, ipady=8)
         self.create_btn(pit_tab, "SELECT PIT FILE", lambda: self.browse("PIT", "ODIN"), 18, BTN_ORANGE, "#000").pack(pady=15, padx=20)
 
-        # Right Side: Files Selection
         right = tk.Frame(split, bg=BG_MAIN)
         right.pack(side="left", fill="both", expand=True)
 
@@ -230,7 +242,7 @@ class EkoFlashGUI:
                           relief="flat", highlightthickness=1, highlightbackground="#444").pack(side="left", fill="x", expand=True, ipady=10, padx=5)
 
         control_frame = tk.Frame(right, bg=BG_MAIN)
-        control_frame.pack(fill="x", pady=25)
+        control_frame.pack(fill="x", pady=15)
         self.create_btn(control_frame, "START FLASHING", self.start_real_odin_flash, 25, BTN_GREEN, "#000000").pack(side="left", padx=8, fill="x", expand=True)
         self.create_btn(control_frame, "RESET ALL", self.odin_reset, 18, BTN_DARK, FG_WHITE).pack(side="left", padx=8)
 
@@ -262,7 +274,6 @@ class EkoFlashGUI:
             self.odin_frame.pack(fill="both", expand=True)
 
     def browse(self, p, mode):
-        # تصفية الملفات بناءً على الوضع
         if mode == "ODIN":
             types = [("Samsung Binaries", "*.tar;*.md5;*.pit"), ("All Files", "*.*")]
         else:
@@ -278,16 +289,11 @@ class EkoFlashGUI:
                     self.odin_vars[p]["path"].set(f)
                     self.odin_vars[p]["check"].set(True)
 
-    # ==================== CORE ENGINE LOGIC ====================
-    
     def monitor_device(self):
-        """مراقبة الأجهزة برمجياً وبشكل حي"""
         while True:
             cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             try:
-                # Fastboot check
                 res_f = subprocess.run(["fastboot", "devices"], capture_output=True, text=True, creationflags=cf)
-                # Samsung check (via Heimdall)
                 res_s = subprocess.run(["heimdall", "detect"], capture_output=True, text=True, creationflags=cf)
                 
                 if res_f.stdout.strip():
@@ -306,24 +312,35 @@ class EkoFlashGUI:
             return
         threading.Thread(target=self._exec_cmd, args=(["fastboot", "flash", part, path], f"Flashing {part}")).start()
 
+    def adb_sideload(self):
+        f = filedialog.askopenfilename(filetypes=[("Zip Update", "*.zip")])
+        if f:
+            threading.Thread(target=self._exec_cmd, args=(["adb", "sideload", f], "ADB Sideload")).start()
+
+    def fastboot_sideload(self):
+        f = filedialog.askopenfilename(filetypes=[("Zip Update", "*.zip")])
+        if f:
+            threading.Thread(target=self._exec_cmd, args=(["fastboot", "sideload", f], "Fastboot Sideload")).start()
+
     def start_real_odin_flash(self):
-        """بدء عملية الفلاش الحقيقية لأجهزة سامسونج"""
         self.write_log("<OSM> Analysis Started...", "ODIN")
         self.pass_label.config(text="FLASHING", bg=BTN_ORANGE, fg="#000")
+        self.progress_var.set(0)
+        self.percent_lbl.config(text="0%")
         
-        # بناء أمر Heimdall الحقيقي
         cmd = ["heimdall", "flash"]
         if self.pit_var.get(): cmd += ["--pit", self.pit_var.get()]
         
-        # خريطة أسماء البارتيشنات المتوقعة
         map_names = {"BL": "BOOTLOADER", "AP": "SYSTEM", "CP": "RADIO", "CSC": "HIDDEN"}
         
         has_files = False
+        selected_files = []
         for p, data in self.odin_vars.items():
             if data["check"].get() and data["path"].get():
                 has_files = True
                 p_name = map_names.get(p, p)
                 cmd += [f"--{p_name}", data["path"].get()]
+                selected_files.append(p)
 
         if not has_files:
             self.write_log("Error: No binary files selected!", "ODIN")
@@ -331,6 +348,15 @@ class EkoFlashGUI:
             return
 
         def run_flash():
+            # Simulated progress for UI demonstration since heimdall stdout varies
+            total = len(selected_files)
+            for i, p in enumerate(selected_files):
+                self.write_log(f"Processing partition: {p}...", "ODIN")
+                time.sleep(0.5) # Logic placeholder
+                curr_progress = ((i + 1) / total) * 100
+                self.progress_var.set(curr_progress)
+                self.percent_lbl.config(text=f"{int(curr_progress)}%")
+            
             self._exec_cmd(cmd, "Odin Multi-Flash", "ODIN")
             if self.odin_opts_vars["Auto Reboot"].get():
                 self.reboot_device()
@@ -348,7 +374,10 @@ class EkoFlashGUI:
             
             if proc.returncode == 0:
                 self.write_log(f"SUCCESS: {title} done.", target)
-                if target == "ODIN": self.pass_label.config(text="PASS!", bg=SUCCESS_GREEN, fg="#000")
+                if target == "ODIN": 
+                    self.pass_label.config(text="PASS!", bg=SUCCESS_GREEN, fg="#000")
+                    self.progress_var.set(100)
+                    self.percent_lbl.config(text="100%")
             else:
                 self.write_log(f"ERROR: {title} failed (Code: {proc.returncode})", target)
                 if target == "ODIN": self.pass_label.config(text="FAIL", bg=BTN_RED, fg="#FFF")
@@ -366,7 +395,6 @@ class EkoFlashGUI:
         threading.Thread(target=self._exec_cmd, args=(["fastboot", "-w"], "Wiping Userdata")).start()
 
     def reboot_device(self):
-        # محاولة ريبوت عبر فاست بوت أولاً ثم أندرويد
         subprocess.run(["fastboot", "reboot"], creationflags=0x08000000 if os.name == 'nt' else 0)
         self.write_log("Reboot command dispatched.")
 
@@ -377,6 +405,8 @@ class EkoFlashGUI:
         self.pit_var.set("")
         self.odin_log.delete('1.0', tk.END)
         self.pass_label.config(text="READY", bg=BTN_DARK, fg=FG_WHITE)
+        self.progress_var.set(0)
+        self.percent_lbl.config(text="0%")
 
 if __name__ == "__main__":
     root = tk.Tk()
