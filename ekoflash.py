@@ -73,9 +73,10 @@ class EkoFlashGUI:
             # Text Entry
             v = tk.StringVar()
             self.part_vars[p] = v
+            # تم تصحيح مكان الـ width ليكون داخل Entry وليس داخل pack
             ent = tk.Entry(row, textvariable=v, bg=BG_ENTRY, fg=FG_WHITE, borderwidth=0,
-                           font=("Consolas", 9), highlightthickness=1, highlightbackground="#333")
-            ent.pack(side="left", width=50, ipady=3, padx=10)
+                           font=("Consolas", 9), highlightthickness=1, highlightbackground="#333", width=50)
+            ent.pack(side="left", ipady=3, padx=10)
             
             # Buttons
             self.create_btn(row, "Browse", lambda x=p: self.browse(x), 9, BTN_ORANGE, "#000").pack(side="left", padx=3)
@@ -102,7 +103,7 @@ class EkoFlashGUI:
         self.create_btn(action_frame, "☐☐ Reboot System", self.reboot, 22, BTN_BLUE, FG_WHITE).pack(side="left", padx=10)
 
         # --- LOG TERMINAL ---
-        log_label = tk.Label(self.root, text="AKRO_COMMAND_LOGS:", bg=BG_MAIN, fg=TEXT_BLUE, font=("Consolas", 9, "bold"))
+        log_label = tk.Label(self.root, text="LOG:", bg=BG_MAIN, fg=TEXT_BLUE, font=("Consolas", 9, "bold"))
         log_label.pack(fill="x", padx=35, anchor="w")
         
         self.log_widget = tk.Text(self.root, height=7, bg="#080808", fg=FG_WHITE, font=("Consolas", 8),
